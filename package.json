@@ -1,7 +1,8 @@
+
 {
   "name": "register-book",
   "private": true,
-  "version": "1.0.0",
+  "version": "7.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",

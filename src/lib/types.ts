@@ -12,7 +12,10 @@ export type SchoolStatus =
   | "rejected"
   | "suspended";
 
-export type AttendanceStatus = "present" | "absent" | "late";
+export type AttendanceStatus =
+  | "present"
+  | "absent"
+  | "late";
 
 export interface Profile {
   id: string;
@@ -20,7 +23,7 @@ export interface Profile {
   email: string;
   role: UserRole;
   school_id: string | null;
-  created_at?: string;
+  created_at: string;
 }
 
 export interface School {
@@ -41,6 +44,7 @@ export interface SchoolClass {
   name: string;
   section: string;
   academic_year: string;
+  created_at: string;
 }
 
 export interface Student {
@@ -62,6 +66,7 @@ export interface Teacher {
   profile_id: string;
   employee_number: string | null;
   designation: string | null;
+  created_at: string;
 }
 
 export interface Subject {
@@ -69,6 +74,16 @@ export interface Subject {
   school_id: string;
   class_id: string;
   name: string;
+  created_at: string;
+}
+
+export interface TeacherAssignment {
+  id: string;
+  school_id: string;
+  teacher_id: string;
+  class_id: string;
+  subject_id: string;
+  created_at: string;
 }
 
 export interface TimetablePeriod {
@@ -81,6 +96,7 @@ export interface TimetablePeriod {
   period_number: number;
   starts_at: string;
   ends_at: string;
+  created_at: string;
 }
 
 export interface AttendanceRecord {
@@ -88,9 +104,9 @@ export interface AttendanceRecord {
   school_id: string;
   student_id: string;
   class_id: string;
-  subject_id: string | null;
+  subject_id: string;
   teacher_id: string;
-  timetable_period_id: string | null;
+  timetable_period_id: string;
   attendance_date: string;
   status: AttendanceStatus;
   remarks: string | null;

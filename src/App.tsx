@@ -1,283 +1,1160 @@
-import { useEffect, useMemo, useState } from "react";
+
+import { useMemo, useState } from "react";
 import {
-  Activity, ArrowRight, BookOpen, Building2, CalendarDays, Check,
-  CheckCircle2, ChevronRight, GraduationCap, LayoutDashboard, LockKeyhole,
-  LogOut, Menu, ShieldCheck, Users, X
+  LayoutDashboard,
+  GraduationCap,
+  Users,
+  ClipboardCheck,
+  CalendarDays,
+  BookOpen,
+  BarChart3,
+  Settings,
+  Search,
+  Bell,
+  ChevronDown,
+  Plus,
+  Download,
+  Check,
+  X,
+  Clock3,
+  TrendingUp,
+  Menu,
+  School,
+  ShieldCheck,
+  LogOut,
+  MoreHorizontal,
+  ArrowUpRight,
+  UserRound,
+  FileSpreadsheet,
+  CheckCircle2,
+  AlertCircle,
+  Filter,
+  Calendar,
 } from "lucide-react";
-import { isSupabaseConfigured, supabase } from "./lib/supabase";
-import type { Profile, School, Student } from "./lib/types";
+import {
+  isSupabaseConfigured,
+  supabase,
+} from "./lib/supabase";
+import type {
+  AttendanceStatus,
+  School as SchoolType,
+  Student,
+} from "./lib/types";
 
-type Screen = "home" | "login" | "apply";
+type Page =
+  | "Overview"
+  | "Schools"
+  | "Students"
+  | "Attendance"
+  | "Classes"
+  | "Timetable"
+  | "Reports"
+  | "Settings";
 
-export default function App() {
-  const [screen, setScreen] = useState<Screen>("home");
-  const [session, setSession] = useState<any>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [school, setSchool] = useState<School | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [notice, setNotice] = useState("");
+type NavItem = {
+  label: Page;
+  icon: typeof LayoutDashboard;
+};
+
+const navigation: NavItem[] = [
+  { label: "Overview", icon: LayoutDashboard },
+  { label: "Schools", icon: School },
+  { label: "Students", icon: GraduationCap },
+  { label: "Attendance", icon: ClipboardCheck },
+  { label: "Classes", icon: BookOpen },
+  { label: "Timetable", icon: CalendarDays },
+  { label: "Reports", icon: BarChart3 },
+  { label: "Settings", icon: Settings },
+];
+
+const demoSchools: SchoolType[] = [
+  {
+    id: "1",
+    name: "Delhi Public Academy",
+    code: "DPA001",
+    contact_email: "admin@dpa.edu",
+    contact_phone: "+91 98765 43210",
+    address: "New Delhi, India",
+    logo_url: null,
+    status: "approved",
+    created_at: "2026-11-20",
+  },
+  {
+    id: "2",
+    name: "St. Mary's High School",
+    code: "SMH002",
+    contact_email: "office@stmarys.edu",
+    contact_phone: "+91 98765 43211",
+    address: "Bhubaneswar, India",
+    logo_url: null,
+    status: "pending",
+    created_at: "2026-11-22",
+  },
+  {
+    id: "3",
+    name: "Green Valley School",
+    code: "GVS003",
+    contact_email: "hello@gvs.edu",
+    contact_phone: "+91 98765 43212",
+    address: "Kolkata, India",
+    logo_url: null,
+    status: "approved",
+    created_at: "2026-11-18",
+  },
+  {
+    id: "4",
+    name: "Sunrise International",
+    code: "SIS004",
+    contact_email: "info@sunrise.edu",
+    contact_phone: "+91 98765 43213",
+    address: "Cuttack, India",
+    logo_url: null,
+    status: "pending",
+    created_at: "2026-11-23",
+  },
+];
+
+const demoStudents: Student[] = [
+  {
+    id: "1",
+    school_id: "1",
+    class_id: "class-1",
+    full_name: "Aarav Sharma",
+    roll_number: "001",
+    admission_number: "ADM001",
+    photo_url: null,
+    guardian_name: "Raj Sharma",
+    guardian_phone: "+91 90000 00001",
+    created_at: "2026-04-01",
+  },
+  {
+    id: "2",
+    school_id: "1",
+    class_id: "class-1",
+    full_name: "Ananya Patel",
+    roll_number: "002",
+    admission_number: "ADM002",
+    photo_url: null,
+    guardian_name: "Amit Patel",
+    guardian_phone: "+91 90000 00002",
+    created_at: "2026-04-01",
+  },
+  {
+    id: "3",
+    school_id: "1",
+    class_id: "class-1",
+    full_name: "Vihaan Kumar",
+    roll_number: "003",
+    admission_number: "ADM003",
+    photo_url: null,
+    guardian_name: "Suresh Kumar",
+    guardian_phone: "+91 90000 00003",
+    created_at: "2026-04-01",
+  },
+  {
+    id: "4",
+    school_id: "1",
+    class_id: "class-1",
+    full_name: "Diya Singh",
+    roll_number: "004",
+    admission_number: "ADM004",
+    photo_url: null,
+    guardian_name: "Ravi Singh",
+    guardian_phone: "+91 90000 00004",
+    created_at: "2026-04-01",
+  },
+  {
+    id: "5",
+    school_id: "1",
+    class_id: "class-1",
+    full_name: "Arjun Das",
+    roll_number: "005",
+    admission_number: "ADM005",
+    photo_url: null,
+    guardian_name: "Mohan Das",
+    guardian_phone: "+91 90000 00005",
+    created_at: "2026-04-01",
+  },
+];
+
+const initialAttendance: Record<string, AttendanceStatus> = {
+  "1": "present",
+  "2": "present",
+  "3": "absent",
+  "4": "late",
+  "5": "present",
+};
+
+const money = (value: number) =>
+  new Intl.NumberFormat("en-IN").format(value);
+
+function App() {
+  const [page, setPage] = useState<Page>("Overview");
   const [mobileMenu, setMobileMenu] = useState(false);
+  const [search, setSearch] = useState("");
+  const [schools, setSchools] = useState(demoSchools);
+  const [students, setStudents] = useState(demoStudents);
+  const [attendance, setAttendance] =
+    useState<Record<string, AttendanceStatus>>(initialAttendance);
+  const [schoolFilter, setSchoolFilter] = useState("all");
+  const [studentName, setStudentName] = useState("");
+  const [studentRoll, setStudentRoll] = useState("");
+  const [showAddStudent, setShowAddStudent] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [userName, setUserName] = useState("Platform Administrator");
 
-  useEffect(() => {
+  const pendingSchools = schools.filter(
+    (school) => school.status === "pending"
+  ).length;
+
+  const presentCount = Object.values(attendance).filter(
+    (status) => status === "present"
+  ).length;
+
+  const absentCount = Object.values(attendance).filter(
+    (status) => status === "absent"
+  ).length;
+
+  const lateCount = Object.values(attendance).filter(
+    (status) => status === "late"
+  ).length;
+
+  const filteredStudents = useMemo(
+    () =>
+      students.filter((student) =>
+        `${student.full_name} ${student.roll_number}`
+          .toLowerCase()
+          .includes(search.toLowerCase())
+      ),
+    [students, search]
+  );
+
+  const filteredSchools = useMemo(
+    () =>
+      schools.filter((school) => {
+        const matchesSearch =
+          `${school.name} ${school.code} ${school.contact_email}`
+            .toLowerCase()
+            .includes(search.toLowerCase());
+
+        const matchesStatus =
+          schoolFilter === "all" ||
+          school.status === schoolFilter;
+
+        return matchesSearch && matchesStatus;
+      }),
+    [schools, search, schoolFilter]
+  );
+
+  function notify(message: string) {
+    setNotice(message);
+    window.setTimeout(() => setNotice(""), 3500);
+  }
+
+  async function changeSchoolStatus(
+    schoolId: string,
+    status: "approved" | "rejected"
+  ) {
     if (!supabase) {
-      setLoading(false);
+      notify("Supabase is not connected. This is demo mode.");
       return;
     }
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      if (data.session) void loadProfile(data.session.user.id);
-      else setLoading(false);
-    });
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, next) => {
-      setSession(next);
-      if (next) {
-        setLoading(true);
-        window.setTimeout(() => void loadProfile(next.user.id), 0);
-      } else {
-        setProfile(null);
-        setSchool(null);
-        setLoading(false);
+
+    setSaving(true);
+
+    const { error } = await supabase
+      .from("schools")
+      .update({ status })
+      .eq("id", schoolId);
+
+    setSaving(false);
+
+    if (error) {
+      notify(error.message);
+      return;
+    }
+
+    setSchools((current) =>
+      current.map((school) =>
+        school.id === schoolId
+          ? { ...school, status }
+          : school
+      )
+    );
+
+    notify(
+      status === "approved"
+        ? "School approved successfully."
+        : "School application rejected."
+    );
+  }
+
+  async function addStudent() {
+    const name = studentName.trim();
+    const roll = studentRoll.trim();
+
+    if (!name || !roll) {
+      notify("Enter the student name and roll number.");
+      return;
+    }
+
+    const newStudent: Student = {
+      id: crypto.randomUUID(),
+      school_id: "1",
+      class_id: "class-1",
+      full_name: name,
+      roll_number: roll,
+      admission_number: null,
+      photo_url: null,
+      guardian_name: null,
+      guardian_phone: null,
+      created_at: new Date().toISOString(),
+    };
+
+    if (supabase) {
+      const { data, error } = await supabase
+        .from("students")
+        .insert({
+          school_id: newStudent.school_id,
+          class_id: newStudent.class_id,
+          full_name: newStudent.full_name,
+          roll_number: newStudent.roll_number,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        notify(error.message);
+        return;
       }
-    });
-    return () => listener.subscription.unsubscribe();
-  }, []);
 
-  async function loadProfile(userId: string) {
-    if (!supabase) return;
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("id, full_name, role, school_id")
-      .eq("id", userId)
-      .maybeSingle();
-    if (error) setNotice(error.message);
-    setProfile(data as Profile | null);
-    if (data?.school_id) {
-      const { data: schoolData } = await supabase
-        .from("schools").select("*").eq("id", data.school_id).maybeSingle();
-      setSchool(schoolData as School | null);
+      setStudents((current) => [
+        data as Student,
+        ...current,
+      ]);
     } else {
-      setSchool(null);
+      setStudents((current) => [
+        newStudent,
+        ...current,
+      ]);
+      notify("Demo student added locally.");
     }
-    setLoading(false);
+
+    setStudentName("");
+    setStudentRoll("");
+    setShowAddStudent(false);
   }
 
-  async function signOut() {
-    if (supabase) await supabase.auth.signOut();
-    setNotice("");
-    setScreen("home");
+  function updateAttendance(
+    studentId: string,
+    status: AttendanceStatus
+  ) {
+    setAttendance((current) => ({
+      ...current,
+      [studentId]: status,
+    }));
   }
 
-  if (!isSupabaseConfigured) {
-    return <SetupScreen onApply={() => setScreen("apply")} onLogin={() => setScreen("login")} screen={screen} setScreen={setScreen} />;
-  }
+  function markAllPresent() {
+    const updated: Record<string, AttendanceStatus> = {};
 
-  if (loading) return <div className="loading-screen"><div className="loader" /><span>Opening Register Book…</span></div>;
-
-  if (!session) {
-    return <PublicSite
-      screen={screen}
-      setScreen={setScreen}
-      notice={notice}
-      setNotice={setNotice}
-    />;
-  }
-
-  if (!profile) {
-    return <div className="loading-screen"><div className="loader" /><p>Preparing your account…</p><button className="text-button" onClick={signOut}>Sign out</button></div>;
-  }
-
-  if (profile.role === "platform_owner") {
-    return <OwnerDashboard profile={profile} onSignOut={signOut} notice={notice} setNotice={setNotice} />;
-  }
-  if (profile.role === "pending_school_admin") {
-    return <PendingScreen name={profile.full_name} onSignOut={signOut} />;
-  }
-  return <SchoolDashboard profile={profile} school={school} onSignOut={signOut} notice={notice} setNotice={setNotice} />;
-}
-
-function Brand({ inverse = false }: { inverse?: boolean }) {
-  return <div className={`brand ${inverse ? "brand-inverse" : ""}`}>
-    <div className="brand-mark"><BookOpen size={20} strokeWidth={2.4} /></div>
-    <span>register<span className="brand-light">book</span></span>
-  </div>;
-}
-
-function SetupScreen({ onApply, onLogin, screen, setScreen }: any) {
-  return <PublicSite screen={screen} setScreen={setScreen} notice="The website design is ready. Connect Supabase to activate school applications, sign-in and private school data." setNotice={() => {}} setupMode onApply={onApply} onLogin={onLogin} />;
-}
-
-function PublicSite({ screen, setScreen, notice, setNotice, setupMode = false, onApply, onLogin }: any) {
-  const [name, setName] = useState("");
-  const [admin, setAdmin] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [password, setPassword] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  async function login(e: React.FormEvent) {
-    e.preventDefault();
-    if (!supabase) return;
-    setBusy(true); setNotice("");
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) setNotice(error.message);
-    setBusy(false);
-  }
-
-  async function apply(e: React.FormEvent) {
-    e.preventDefault();
-    if (!supabase) return;
-    setBusy(true); setNotice("");
-    const { data, error } = await supabase.auth.signUp({
-      email, password,
-      options: { data: { full_name: admin } }
+    students.forEach((student) => {
+      updated[student.id] = "present";
     });
-    if (error) { setNotice(error.message); setBusy(false); return; }
-    if (!data.session) {
-      setNotice("Account created. Confirm your email, then sign in and submit the school application. If email confirmation is disabled during setup, the application will be submitted automatically.");
-      setBusy(false);
-      setScreen("login");
-      return;
-    }
-    const { error: appError } = await supabase.rpc("submit_school_application", {
-      p_school_name: name,
-      p_contact_phone: phone
-    });
-    setNotice(appError ? appError.message : "Your school application has been submitted. The platform owner must approve it before your school workspace becomes active.");
-    setBusy(false);
+
+    setAttendance(updated);
+    notify("All students marked present in this demo session.");
   }
 
-  return <div className="public-shell">
-    <header className="topbar">
-      <Brand />
-      <nav className="desktop-nav">
-        <a href="#features">Features</a><a href="#how-it-works">How it works</a><a href="#privacy">Privacy</a>
-      </nav>
-      <div className="top-actions">
-        <button className="button button-ghost" onClick={() => setScreen("login")}>Sign in</button>
-        <button className="button button-primary" onClick={() => setScreen("apply")}>Register a school <ArrowRight size={16}/></button>
-      </div>
-    </header>
+  function exportStudents() {
+    const header = [
+      "Name",
+      "Roll Number",
+      "Admission Number",
+    ];
 
-    {screen === "home" && <main>
-      <section className="hero">
-        <div className="hero-copy">
-          <div className="eyebrow"><span className="eyebrow-dot"/> SCHOOL MANAGEMENT, MADE CLEAR</div>
-          <h1>Every school day.<br/><span>In good order.</span></h1>
-          <p className="hero-text">A simple, secure place for schools to manage students, teachers, timetables and period-wise attendance.</p>
-          <div className="hero-actions">
-            <button className="button button-primary button-large" onClick={() => setScreen("apply")}>Register your school <ArrowRight size={17}/></button>
-            <button className="button button-outline button-large" onClick={() => setScreen("login")}>School sign in</button>
+    const rows = students.map((student) => [
+      student.full_name,
+      student.roll_number,
+      student.admission_number ?? "",
+    ]);
+
+    const csv = [header, ...rows]
+      .map((row) =>
+        row
+          .map((value) =>
+            `"${String(value).replaceAll('"', '""')}"`
+          )
+          .join(",")
+      )
+      .join("\n");
+
+    const url = URL.createObjectURL(
+      new Blob([csv], {
+        type: "text/csv;charset=utf-8;",
+      })
+    );
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "register-book-students.csv";
+    link.click();
+
+    URL.revokeObjectURL(url);
+    notify("Student CSV exported.");
+  }
+
+  function renderOverview() {
+    return (
+      <>
+        <div className="welcome-row">
+          <div>
+            <div className="eyebrow">MONDAY, 23 NOVEMBER 2026</div>
+            <h1>Good evening, Administrator <span>✦</span></h1>
+            <p className="muted">
+              Here's what's happening across your school network today.
+            </p>
           </div>
-          <div className="hero-proof"><ShieldCheck size={17}/> Separate, private workspace for every approved school</div>
+          <button className="primary-button" onClick={() => setPage("Schools")}>
+            <Plus size={17} /> Manage schools
+          </button>
         </div>
-        <div className="hero-visual">
-          <div className="visual-glow"/>
-          <div className="mock-window">
-            <div className="mock-head"><div className="mock-dots"><i/><i/><i/></div><span>ATTENDANCE OVERVIEW</span><span className="mock-live">LIVE VIEW</span></div>
-            <div className="mock-welcome"><div><small>MONDAY, 22 NOVEMBER</small><h3>Good morning, School Admin</h3></div><div className="mock-avatar">SA</div></div>
-            <div className="mock-stats">
-              <div className="mock-stat"><span>Present</span><strong>842</strong><em className="green">● On track</em></div>
-              <div className="mock-stat"><span>Absent</span><strong>26</strong><em className="red">● Review</em></div>
-              <div className="mock-stat"><span>Late</span><strong>12</strong><em className="amber">● Follow up</em></div>
+
+        <section className="stats-grid">
+          <StatCard
+            label="Total schools"
+            value={schools.length.toString()}
+            detail="Registered institutions"
+            icon={School}
+            color="blue"
+            trend="+12.5%"
+          />
+          <StatCard
+            label="Total students"
+            value={students.length.toString()}
+            detail="In this demonstration"
+            icon={GraduationCap}
+            color="violet"
+            trend="+8.2%"
+          />
+          <StatCard
+            label="Pending applications"
+            value={pendingSchools.toString()}
+            detail="Awaiting review"
+            icon={Clock3}
+            color="amber"
+            trend="Needs attention"
+          />
+          <StatCard
+            label="Present today"
+            value={`${students.length ? Math.round((presentCount / students.length) * 100) : 0}%`}
+            detail={`${presentCount} present in demo`}
+            icon={TrendingUp}
+            color="green"
+            trend="Live demo data"
+          />
+        </section>
+
+        <div className="dashboard-grid">
+          <section className="panel activity-panel">
+            <div className="panel-heading">
+              <div>
+                <h2>Attendance overview</h2>
+                <p>Today's attendance summary</p>
+              </div>
+              <button
+                className="subtle-button"
+                onClick={() => setPage("Attendance")}
+              >
+                View details <ArrowUpRight size={15} />
+              </button>
             </div>
-            <div className="mock-chart"><div className="chart-title"><b>Attendance trend</b><span>This week</span></div><div className="chart-bars">{[48,68,57,82,72,91,76,96,69,85,75,92,63,80,95,72,88,78,96,68,83,74,91,80].map((v,i)=><i key={i} style={{height:`${v}%`}}/>)}</div><div className="chart-labels"><span>MON</span><span>TUE</span><span>WED</span><span>THU</span><span>FRI</span></div></div>
-            <div className="mock-bottom"><span><i className="tiny-dot"/> Class 8 · Section A</span><b>96.4% attendance</b></div>
+
+            <div className="attendance-chart-area">
+              <div className="donut-wrap">
+                <div className="donut">
+                  <div className="donut-center">
+                    <strong>
+                      {students.length
+                        ? Math.round(
+                            (presentCount / students.length) * 100
+                          )
+                        : 0}%
+                    </strong>
+                    <span>Present</span>
+                  </div>
+                </div>
+              </div>
+              <div className="chart-legend">
+                <Legend color="green" label="Present" value={presentCount} />
+                <Legend color="red" label="Absent" value={absentCount} />
+                <Legend color="amber" label="Late" value={lateCount} />
+              </div>
+            </div>
+
+            <div className="chart-footer">
+              <span><Calendar size={14} /> 23 November 2026</span>
+              <span>Demo figures</span>
+            </div>
+          </section>
+
+          <section className="panel applications-panel">
+            <div className="panel-heading">
+              <div>
+                <h2>Recent applications</h2>
+                <p>Schools waiting for approval</p>
+              </div>
+              <button
+                className="icon-button"
+                onClick={() => setPage("Schools")}
+                aria-label="View schools"
+              >
+                <MoreHorizontal size={20} />
+              </button>
+            </div>
+
+            {schools
+              .filter((school) => school.status === "pending")
+              .slice(0, 4)
+              .map((school) => (
+                <div className="application-item" key={school.id}>
+                  <div className="school-avatar">
+                    {school.name.charAt(0)}
+                  </div>
+                  <div className="application-info">
+                    <strong>{school.name}</strong>
+                    <span>{school.contact_email}</span>
+                  </div>
+                  <span className="status pending">Pending</span>
+                </div>
+              ))}
+
+            {pendingSchools === 0 && (
+              <div className="empty-state">
+                No pending applications.
+              </div>
+            )}
+
+            <button
+              className="full-width-link"
+              onClick={() => setPage("Schools")}
+            >
+              View all applications <ArrowUpRight size={15} />
+            </button>
+          </section>
+        </div>
+
+        <section className="panel table-panel">
+          <div className="panel-heading">
+            <div>
+              <h2>School directory</h2>
+              <p>Recently registered institutions</p>
+            </div>
+            <button
+              className="subtle-button"
+              onClick={() => setPage("Schools")}
+            >
+              View all <ArrowUpRight size={15} />
+            </button>
           </div>
-          <div className="float-card float-card-top"><div className="float-icon purple"><Users size={17}/></div><div><b>Student records</b><small>Organised by class</small></div><CheckCircle2 size={18} className="float-check"/></div>
-          <div className="float-card float-card-bottom"><div className="float-icon mint"><Check size={18}/></div><div><b>Period submitted</b><small>Mathematics · Period 3</small></div></div>
+          <SchoolTable schools={schools.slice(0, 4)} />
+        </section>
+      </>
+    );
+  }
+
+  function renderSchools() {
+    return (
+      <>
+        <PageHeading
+          eyebrow="INSTITUTION MANAGEMENT"
+          title="School directory"
+          description="Review applications and manage registered institutions."
+        />
+        <div className="toolbar panel">
+          <div className="search-field">
+            <Search size={17} />
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search schools..."
+            />
+          </div>
+          <select
+            value={schoolFilter}
+            onChange={(event) => setSchoolFilter(event.target.value)}
+            className="filter-select"
+          >
+            <option value="all">All statuses</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+          </select>
         </div>
-      </section>
 
-      <section className="trust-strip"><div><strong>One platform</strong><span>for every school</span></div><div><strong>Role-based access</strong><span>for staff and teachers</span></div><div><strong>Period-wise records</strong><span>with clear history</span></div><div><strong>Private by design</strong><span>school data stays separate</span></div></section>
+        <section className="panel table-panel">
+          <div className="panel-heading">
+            <div>
+              <h2>All institutions</h2>
+              <p>{filteredSchools.length} schools found</p>
+            </div>
+          </div>
+          <SchoolTable
+            schools={filteredSchools}
+            onApprove={(id) => changeSchoolStatus(id, "approved")}
+            onReject={(id) => changeSchoolStatus(id, "rejected")}
+            busy={saving}
+          />
+        </section>
+      </>
+    );
+  }
 
-      <section className="section" id="features">
-        <div className="section-heading"><div className="eyebrow">BUILT FOR THE SCHOOL DAY</div><h2>Less paperwork.<br/><span>More clarity.</span></h2><p>Keep daily school operations organised without making the process complicated.</p></div>
-        <div className="feature-grid">
-          <Feature icon={<Users/>} title="Student records" text="Keep student profiles, roll numbers, class, section and photos organised."/>
-          <Feature icon={<CalendarDays/>} title="Period-wise attendance" text="Teachers submit attendance for their assigned class and period."/>
-          <Feature icon={<GraduationCap/>} title="Teacher access" text="Give each staff member an account and the right level of access."/>
-          <Feature icon={<Activity/>} title="Clear reports" text="Review present, absent and late records across the school day."/>
-          <Feature icon={<Building2/>} title="Separate school spaces" text="Each approved school gets its own private workspace and records."/>
-          <Feature icon={<ShieldCheck/>} title="Controlled access" text="School information is protected by account roles and database permissions."/>
+  function renderStudents() {
+    return (
+      <>
+        <PageHeading
+          eyebrow="ACADEMIC RECORDS"
+          title="Student directory"
+          description="Manage student records and enrollment information."
+        />
+        <div className="toolbar panel">
+          <div className="search-field">
+            <Search size={17} />
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search students..."
+            />
+          </div>
+          <button className="secondary-button" onClick={exportStudents}>
+            <Download size={16} /> Export CSV
+          </button>
+          <button
+            className="primary-button"
+            onClick={() => setShowAddStudent(true)}
+          >
+            <Plus size={17} /> Add student
+          </button>
         </div>
-      </section>
 
-      <section className="how-section" id="how-it-works"><div className="how-inner"><div className="eyebrow">GETTING STARTED</div><h2>Three steps to a<br/><span>more organised school.</span></h2><div className="steps"><Step n="01" title="Apply" text="A school administrator submits the school's registration details."/><Step n="02" title="Get approved" text="The platform owner reviews the application and activates the school."/><Step n="03" title="Get to work" text="The school admin sets up classes, staff, students and the timetable."/></div><button className="button button-primary button-large" onClick={() => setScreen("apply")}>Apply for school access <ArrowRight size={17}/></button></div></section>
+        <section className="panel table-panel">
+          <div className="panel-heading">
+            <div>
+              <h2>Students</h2>
+              <p>{filteredStudents.length} records</p>
+            </div>
+          </div>
+          <div className="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Student</th>
+                  <th>Roll number</th>
+                  <th>Admission ID</th>
+                  <th>Class</th>
+                  <th>Guardian</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredStudents.map((student) => (
+                  <tr key={student.id}>
+                    <td>
+                      <div className="student-cell">
+                        <div className="student-avatar">
+                          {student.full_name.charAt(0)}
+                        </div>
+                        <strong>{student.full_name}</strong>
+                      </div>
+                    </td>
+                    <td>{student.roll_number}</td>
+                    <td>{student.admission_number || "—"}</td>
+                    <td>Class 10 · A</td>
+                    <td>{student.guardian_name || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {filteredStudents.length === 0 && (
+            <div className="empty-state">No students found.</div>
+          )}
+        </section>
 
-      <section className="privacy-section" id="privacy"><div className="privacy-icon"><LockKeyhole size={25}/></div><div><div className="eyebrow">PRIVACY MATTERS</div><h2>School records are<br/><span>not public records.</span></h2><p>Register Book is designed so school staff can access only the school information they are authorised to see. Student details and photographs must remain protected behind sign-in and school-level permissions.</p></div></section>
-    </main>}
+        {showAddStudent && (
+          <Modal title="Add new student" onClose={() => setShowAddStudent(false)}>
+            <div className="form-stack">
+              <label>
+                Student name
+                <input
+                  value={studentName}
+                  onChange={(event) => setStudentName(event.target.value)}
+                  placeholder="Enter full name"
+                />
+              </label>
+              <label>
+                Roll number
+                <input
+                  value={studentRoll}
+                  onChange={(event) => setStudentRoll(event.target.value)}
+                  placeholder="Enter roll number"
+                />
+              </label>
+              <button className="primary-button block-button" onClick={addStudent}>
+                Add student
+              </button>
+            </div>
+          </Modal>
+        )}
+      </>
+    );
+  }
 
-    {screen === "login" && <AuthPanel title="Welcome back" subtitle="Sign in to your Register Book workspace." onSubmit={login} busy={busy} notice={notice} email={email} setEmail={setEmail} password={password} setPassword={setPassword} submitText="Sign in" onBack={() => setScreen("home")} switchText="Need a school account?" switchAction={() => setScreen("apply")}/>}
-    {screen === "apply" && <div className="form-page"><div className="form-card"><button className="back-link" onClick={() => setScreen("home")}>← Back to home</button><div className="eyebrow">SCHOOL REGISTRATION</div><h2>Bring your school<br/><span>onto Register Book.</span></h2><p className="form-intro">Submit your details. Your school workspace will be created after approval.</p>
-      <form onSubmit={apply} className="form-grid">
-        <label>School name<input required value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Sunrise Public School"/></label>
-        <label>Administrator / Headmaster name<input required value={admin} onChange={e=>setAdmin(e.target.value)} placeholder="Full name"/></label>
-        <label>Official email<input required type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="school@example.com"/></label>
-        <label>Contact phone<input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+91"/></label>
-        <label className="full-field">Create password<input required minLength={8} type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="At least 8 characters"/></label>
-        {notice && <div className="notice full-field">{notice}</div>}
-        {setupMode && <div className="notice full-field">The visual website is ready. Connect Supabase and run the included database setup before registrations can work.</div>}
-        <button disabled={busy || setupMode} className="button button-primary button-large full-field">{busy ? "Submitting…" : "Submit school application"} <ArrowRight size={17}/></button>
-      </form><p className="form-foot">Already registered? <button onClick={() => setScreen("login")}>Sign in</button></p>
-    </div></div>}
-    <footer className="footer"><Brand/><span>© {new Date().getFullYear()} Register Book. School records, organised.</span><span>Independent school workspaces</span></footer>
-  </div>;
-}
+  function renderAttendance() {
+    return (
+      <>
+        <PageHeading
+          eyebrow="DAILY REGISTER"
+          title="Attendance register"
+          description="Review and update student attendance records."
+        />
+        <section className="panel attendance-toolbar">
+          <div>
+            <label className="small-label">CLASS</label>
+            <select className="filter-select">
+              <option>Class 10 · Section A</option>
+            </select>
+          </div>
+          <div>
+            <label className="small-label">DATE</label>
+            <input
+              type="date"
+              className="filter-select"
+              defaultValue="2026-11-23"
+            />
+          </div>
+          <button className="primary-button" onClick={markAllPresent}>
+            <Check size={17} /> Mark all present
+          </button>
+        </section>
 
-function Feature({icon,title,text}:any){return <article className="feature-card"><div className="feature-icon">{icon}</div><h3>{title}</h3><p>{text}</p><ChevronRight size={17} className="feature-arrow"/></article>}
-function Step({n,title,text}:any){return <div className="step"><span>{n}</span><div><h3>{title}</h3><p>{text}</p></div></div>}
+        <section className="stats-grid compact-stats">
+          <StatCard label="Present" value={String(presentCount)} icon={CheckCircle2} color="green" />
+          <StatCard label="Absent" value={String(absentCount)} icon={X} color="red" />
+          <StatCard label="Late" value={String(lateCount)} icon={Clock3} color="amber" />
+          <StatCard label="Total students" value={String(students.length)} icon={Users} color="blue" />
+        </section>
 
-function AuthPanel({title,subtitle,onSubmit,busy,notice,email,setEmail,password,setPassword,submitText,onBack,switchText,switchAction}:any){
-  return <div className="auth-page"><div className="auth-card"><button className="back-link" onClick={onBack}>← Back</button><Brand/><div className="eyebrow">SECURE SCHOOL ACCESS</div><h2>{title}</h2><p>{subtitle}</p><form onSubmit={onSubmit} className="auth-form"><label>Email address<input type="email" required value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@school.edu"/></label><label>Password<input type="password" required value={password} onChange={e=>setPassword(e.target.value)} placeholder="Your password"/></label>{notice&&<div className="notice">{notice}</div>}<button className="button button-primary button-large" disabled={busy}>{busy?"Please wait…":submitText}<ArrowRight size={17}/></button></form><p className="auth-switch">{switchText} <button onClick={switchAction}>Register a school</button></p></div></div>
-}
+        <section className="panel table-panel">
+          <div className="panel-heading">
+            <div>
+              <h2>Class attendance</h2>
+              <p>Demo attendance data · Not yet saved to database</p>
+            </div>
+            <span className="status pending">Draft</span>
+          </div>
 
-function OwnerDashboard({profile,onSignOut,notice,setNotice}:any){
-  const [schools,setSchools]=useState<School[]>([]);
-  const [busy,setBusy]=useState(true);
-  const [filter,setFilter]=useState("all");
-  async function load(){if(!supabase)return;setBusy(true);const {data,error}=await supabase.from("schools").select("*").order("created_at",{ascending:false});if(error)setNotice(error.message);setSchools((data||[]) as School[]);setBusy(false)}
-  useEffect(()=>{void load()},[]);
-  async function approve(id:string){if(!supabase)return;const {error}=await supabase.rpc("approve_school_application",{p_school_id:id});setNotice(error?error.message:"School approved successfully.");if(!error)void load()}
-  const shown=useMemo(()=>filter==="all"?schools:schools.filter(s=>s.status===filter),[schools,filter]);
-  return <DashboardShell title="Platform overview" subtitle="Manage school applications and platform access." name={profile.full_name} onSignOut={onSignOut} active="Overview">
-    <div className="dash-welcome"><div><div className="eyebrow">PLATFORM OWNER</div><h1>Good day, {profile.full_name.split(" ")[0]}.</h1><p>Here is the current Register Book school directory.</p></div><div className="welcome-icon"><ShieldCheck size={28}/></div></div>
-    {notice&&<div className="notice">{notice}</div>}
-    <div className="stat-grid"><Stat icon={<Building2/>} label="Total schools" value={schools.length}/><Stat icon={<Activity/>} label="Pending review" value={schools.filter(s=>s.status==="pending").length}/><Stat icon={<CheckCircle2/>} label="Approved" value={schools.filter(s=>s.status==="approved").length}/><Stat icon={<LockKeyhole/>} label="Suspended" value={schools.filter(s=>s.status==="suspended").length}/></div>
-    <div className="panel"><div className="panel-head"><div><h2>School directory</h2><p>Review applications and manage school access.</p></div><select value={filter} onChange={e=>setFilter(e.target.value)}><option value="all">All schools</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="suspended">Suspended</option><option value="rejected">Rejected</option></select></div>
-      {busy?<div className="empty-state">Loading schools…</div>:shown.length===0?<div className="empty-state"><Building2 size={26}/><b>No schools found</b><span>New school applications will appear here.</span></div>:<div className="table-wrap"><table><thead><tr><th>School</th><th>Contact email</th><th>Applied</th><th>Status</th><th>Action</th></tr></thead><tbody>{shown.map(s=><tr key={s.id}><td><b>{s.name}</b></td><td>{s.contact_email}</td><td>{new Date(s.created_at).toLocaleDateString()}</td><td><span className={`status status-${s.status}`}>{s.status}</span></td><td>{s.status==="pending"?<button className="small-action" onClick={()=>approve(s.id)}><Check size={14}/> Approve</button>:<span className="muted">—</span>}</td></tr>)}</tbody></table></div>}
+          <div className="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Student</th>
+                  <th>Roll number</th>
+                  <th>Attendance status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {students.map((student) => (
+                  <tr key={student.id}>
+                    <td>
+                      <div className="student-cell">
+                        <div className="student-avatar">
+                          {student.full_name.charAt(0)}
+                        </div>
+                        <strong>{student.full_name}</strong>
+                      </div>
+                    </td>
+                    <td>{student.roll_number}</td>
+                    <td>
+                      <div className="attendance-actions">
+                        {(
+                          ["present", "absent", "late"] as AttendanceStatus[]
+                        ).map((status) => (
+                          <button
+                            key={status}
+                            onClick={() =>
+                              updateAttendance(student.id, status)
+                            }
+                            className={`attendance-choice ${status} ${
+                              attendance[student.id] === status
+                                ? "selected"
+                                : ""
+                            }`}
+                          >
+                            {status}
+                          </button>
+                        ))}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </>
+    );
+  }
+
+  function renderPlaceholder(title: string, description: string) {
+    return (
+      <>
+        <PageHeading
+          eyebrow="REGISTER BOOK"
+          title={title}
+          description={description}
+        />
+        <section className="panel coming-soon">
+          <div className="coming-icon"><ShieldCheck size={28} /></div>
+          <h2>{title} workspace</h2>
+          <p>
+            This section is part of the Register Book V7 development plan.
+            The complete database-backed workflow will be added in the next implementation stage.
+          </p>
+        </section>
+      </>
+    );
+  }
+
+  return (
+    <div className="app-shell">
+      <aside className={`sidebar ${mobileMenu ? "sidebar-open" : ""}`}>
+        <div className="brand">
+          <div className="brand-mark">
+            <BookOpen size={22} />
+          </div>
+          <div className="brand-copy">
+            <strong>register<span>.</span></strong>
+            <small>BOOK MANAGEMENT</small>
+          </div>
+          <button
+            className="mobile-close icon-button"
+            onClick={() => setMobileMenu(false)}
+            aria-label="Close menu"
+          >
+            <X size={19} />
+          </button>
+        </div>
+
+        <div className="workspace-switcher">
+          <div className="workspace-symbol"><ShieldCheck size={18} /></div>
+          <div>
+            <strong>Platform workspace</strong>
+            <span>Administrator</span>
+          </div>
+          <ChevronDown size={15} />
+        </div>
+
+        <div className="nav-label">WORKSPACE</div>
+        <nav className="side-navigation">
+          {navigation.map(({ label, icon: Icon }) => (
+            <button
+              key={label}
+              className={`nav-link ${page === label ? "active" : ""}`}
+              onClick={() => {
+                setPage(label);
+                setMobileMenu(false);
+                setSearch("");
+              }}
+            >
+              <Icon size={18} />
+              <span>{label}</span>
+              {label === "Schools" && pendingSchools > 0 && (
+                <span className="nav-count">{pendingSchools}</span>
+              )}
+            </button>
+          ))}
+        </nav>
+
+        <div className="sidebar-bottom">
+          <div className="support-card">
+            <div className="support-icon"><ShieldCheck size={18} /></div>
+            <strong>Secure workspace</strong>
+            <p>Keep every school's records protected.</p>
+          </div>
+          <div className="sidebar-user">
+            <div className="user-avatar">PA</div>
+            <div>
+              <strong>{userName}</strong>
+              <span>Platform owner</span>
+            </div>
+            <button
+              className="icon-button"
+              onClick={() => notify("Sign out requires authentication setup.")}
+              aria-label="Sign out"
+            >
+              <LogOut size={16} />
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      {mobileMenu && (
+        <button
+          className="mobile-overlay"
+          onClick={() => setMobileMenu(false)}
+          aria-label="Close navigation"
+        />
+      )}
+
+      <main className="main-area">
+        <header className="topbar">
+          <div className="topbar-left">
+            <button
+              className="mobile-menu-button icon-button"
+              onClick={() => setMobileMenu(true)}
+              aria-label="Open navigation"
+            >
+              <Menu size={21} />
+            </button>
+            <div className="breadcrumbs">
+              <span>Workspace</span>
+              <span className="breadcrumb-separator">/</span>
+              <strong>{page}</strong>
+            </div>
+          </div>
+          <div className="topbar-right">
+            <div className="topbar-search">
+              <Search size={16} />
+              <input
+                placeholder="Search..."
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+              <kbd>⌘ K</kbd>
+            </div>
+            <button
+              className="notification-button icon-button"
+              onClick={() => setPage("Schools")}
+              aria-label="Notifications"
+            >
+              <Bell size={19} />
+              {pendingSchools > 0 && <i />}
+            </button>
+            <div className="topbar-divider" />
+            <div className="topbar-profile">
+              <div className="user-avatar small-avatar">PA</div>
+              <ChevronDown size={14} />
+            </div>
+          </div>
+        </header>
+
+        <div className="page-content">
+          {page === "Overview" && renderOverview()}
+          {page === "Schools" && renderSchools()}
+          {page === "Students" && renderStudents()}
+          {page === "Attendance" && renderAttendance()}
+          {page === "Classes" &&
+            renderPlaceholder("Classes & sections", "Organize academic classes, sections and student groups.")}
+          {page === "Timetable" &&
+            renderPlaceholder("Timetable", "Manage subjects, periods, teachers and weekly schedules.")}
+          {page === "Reports" &&
+            renderPlaceholder("Reports & analytics", "View attendance summaries and academic reports.")}
+          {page === "Settings" &&
+            renderPlaceholder("Settings", "Configure school policies, account preferences and platform options.")}
+        </div>
+      </main>
+
+      {notice && (
+        <div className="toast">
+          <AlertCircle size={17} />
+          {notice}
+        </div>
+      )}
     </div>
-  </DashboardShell>
+  );
 }
 
-function SchoolDashboard({profile,school,onSignOut,notice,setNotice}:any){
-  const [students,setStudents]=useState<Student[]>([]);
-  const [classes,setClasses]=useState<any[]>([]);
-  const [tab,setTab]=useState("Overview");
-  const [showAdd,setShowAdd]=useState(false);
-  const [fullName,setFullName]=useState("");
-  const [roll,setRoll]=useState("");
-  const [className,setClassName]=useState("");
-  const [section,setSection]=useState("");
-  const [busy,setBusy]=useState(false);
-  async function load(){if(!supabase||!profile.school_id)return;const [st,cl]=await Promise.all([supabase.from("students").select("id,full_name,roll_number,class_name,section").eq("school_id",profile.school_id).order("class_name"),supabase.from("school_classes").select("*").eq("school_id",profile.school_id)]);if(st.error)setNotice(st.error.message);setStudents((st.data||[]) as Student[]);setClasses(cl.data||[])}
-  useEffect(()=>{void load()},[profile.school_id]);
-  async function addStudent(e:React.FormEvent){e.preventDefault();if(!supabase||!profile.school_id)return;setBusy(true);const {error}=await supabase.from("students").insert({school_id:profile.school_id,full_name:fullName,roll_number:roll,class_name:className,section});setNotice(error?error.message:"Student added.");if(!error){setFullName("");setRoll("");setClassName("");setSection("");setShowAdd(false);void load()}setBusy(false)}
-  const nav=["Overview","Students","Teachers","Attendance","Timetable"];
-  return <DashboardShell title={school?.name||"School workspace"} subtitle="Your school's private attendance workspace." name={profile.full_name} onSignOut={onSignOut} active={tab} onNav={setTab}>
-    <div className="dash-welcome"><div><div className="eyebrow">{school?.name||"SCHOOL WORKSPACE"}</div><h1>Good morning, {profile.full_name.split(" ")[0]}.</h1><p>Here is your school's workspace at a glance.</p></div><div className="welcome-icon"><GraduationCap size={28}/></div></div>
-    {school?.status!=="approved"&&<div className="notice">Your school account is awaiting platform approval. Some actions are unavailable until approval is complete.</div>}
-    {notice&&<div className="notice">{notice}</div>}
-    {tab==="Overview"&&<><div className="stat-grid"><Stat icon={<Users/>} label="Students" value={students.length}/><Stat icon={<GraduationCap/>} label="Classes" value={classes.length}/><Stat icon={<CalendarDays/>} label="Attendance sessions" value="—"/><Stat icon={<Activity/>} label="Today's attendance" value="—"/></div><div className="panel"><div className="panel-head"><div><h2>Workspace setup</h2><p>Start by organising your school records.</p></div></div><div className="setup-list"><SetupItem n="01" title="Add your classes and sections" desc="Set up class levels and sections for your school."/><SetupItem n="02" title="Add student records" desc="Create student profiles with roll numbers and class details."/><SetupItem n="03" title="Set up teachers and timetable" desc="Assign staff, subjects and periods."/><SetupItem n="04" title="Start period-wise attendance" desc="Teachers can submit their own period attendance."/></div></div></>}
-    {tab==="Students"&&<div className="panel"><div className="panel-head"><div><h2>Student records</h2><p>Manage student names, roll numbers and class assignments.</p></div><button className="button button-primary" onClick={()=>setShowAdd(!showAdd)}>+ Add student</button></div>{showAdd&&<form className="student-form" onSubmit={addStudent}><label>Student name<input required value={fullName} onChange={e=>setFullName(e.target.value)} placeholder="Full name"/></label><label>Roll number<input required value={roll} onChange={e=>setRoll(e.target.value)} placeholder="Roll no."/></label><label>Class number<input required value={className} onChange={e=>setClassName(e.target.value)} placeholder="e.g. 8"/></label><label>Section<input required value={section} onChange={e=>setSection(e.target.value)} placeholder="e.g. A"/></label><button className="button button-primary" disabled={busy}>{busy?"Saving…":"Save student"}</button></form>}{students.length===0?<div className="empty-state"><Users size={26}/><b>No student records yet</b><span>Add your first student to begin.</span></div>:<div className="table-wrap"><table><thead><tr><th>Student</th><th>Roll number</th><th>Class</th><th>Section</th></tr></thead><tbody>{students.map(s=><tr key={s.id}><td><b>{s.full_name}</b></td><td>{s.roll_number}</td><td>{s.class_name}</td><td>{s.section}</td></tr>)}</tbody></table></div>}</div>}
-    {tab!=="Overview"&&tab!=="Students"&&<div className="panel"><div className="empty-state"><Activity size={26}/><b>{tab} setup is the next development phase</b><span>The project foundation is in place. This module still needs to be implemented and tested before school use.</span></div></div>}
-  </DashboardShell>
+function StatCard({
+  label,
+  value,
+  detail,
+  icon: Icon,
+  color,
+  trend,
+}: {
+  label: string;
+  value: string;
+  detail?: string;
+  icon: typeof LayoutDashboard;
+  color: string;
+  trend?: string;
+}) {
+  return (
+    <div className="stat-card panel">
+      <div className="stat-top">
+        <span>{label}</span>
+        <div className={`stat-icon ${color}`}><Icon size={19} /></div>
+      </div>
+      <strong className="stat-value">{value}</strong>
+      <div className="stat-bottom">
+        <span>{detail || "Overview"}</span>
+        {trend && <span className="stat-trend">{trend}</span>}
+      </div>
+    </div>
+  );
 }
 
-function DashboardShell({children,title,subtitle,name,onSignOut,active,onNav}:any){
-  const [open,setOpen]=useState(false);
-  const nav=[{label:"Overview",icon:<LayoutDashboard size={18}/>},{label:"Students",icon:<Users size={18}/>},{label:"Teachers",icon:<GraduationCap size={18}/>},{label:"Attendance",icon:<CalendarDays size={18}/>},{label:"Timetable",icon:<BookOpen size={18}/>}];
-  return <div className="dashboard-shell"><aside className={`sidebar ${open?"sidebar-open":""}`}><Brand/><div className="side-label">WORKSPACE</div>{nav.map(n=><button key={n.label} onClick={()=>{onNav?.(n.label);setOpen(false)}} className={`side-link ${active===n.label?"side-active":""}`}>{n.icon}{n.label}</button>)}<div className="sidebar-bottom"><div className="user-mini"><div className="user-avatar">{name?.slice(0,1)||"U"}</div><div><b>{name}</b><small>Signed in</small></div></div><button className="side-link signout" onClick={onSignOut}><LogOut size={18}/> Sign out</button></div></aside><main className="dashboard-main"><header className="dash-topbar"><button className="menu-button" onClick={()=>setOpen(!open)}><Menu/></button><div><b>{title}</b><small>{subtitle}</small></div><div className="top-user"><span>{name}</span><div className="user-avatar">{name?.slice(0,1)||"U"}</div></div></header><div className="dash-content">{children}</div></main></div>
+function Legend({
+  color,
+  label,
+  value,
+}: {
+  color: string;
+  label: string;
+  value: number;
+}) {
+  return (
+    <div className="legend-item">
+      <span className={`legend-dot ${color}`} />
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
 }
-function Stat({icon,label,value}:any){return <div className="stat-card"><div className="stat-top"><span>{label}</span><i>{icon}</i></div><strong>{value}</strong><small>Current records</small></div>}
-function SetupItem({n,title,desc}:any){return <div className="setup-item"><span>{n}</span><div><b>{title}</b><small>{desc}</small></div><ChevronRight size={18}/></div>}
-function PendingScreen({name,onSignOut}:any){return <div className="pending-page"><div className="pending-card"><div className="pending-icon"><Activity size={28}/></div><Brand/><h1>Application under review</h1><p>Hello {name}. Your school registration has been received. The platform owner must approve it before your school workspace is activated.</p><button className="button button-outline" onClick={onSignOut}>Sign out</button></div></div>}
+
+function PageHeading({
+  eyebrow,
+  title,
+  description,
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="page-heading">
+      <div className="eyebrow">{eyebrow}</div>
+      <h1>{title}</h1>
+      <p className="muted">{description}</p>
+    </div>
+  );
+}
+
+function SchoolTable({
+  schools,
+  onApprove,
+  onReject,
+  busy = false,
+}: {
+  schools: SchoolType[];
+  onApprove?: (id: string) => void;
+  onReject?: (id: string) => void;
+  busy?: boolean;
+}) {
+  return (
+    <div className="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Institution</th>
+            <th>School code</th>
+            <th>Contact</th>
+            <th>Status</th>
+            {(onApprove || onReject) && <th>Actions</th>}
+          </tr>
+        </thead>
+        <tbody>
+          {schools.map((school) => (
+            <tr key={school.id}>
+              <td>
+                <div className="school-cell">
+                  <div className="school-avatar">
+                    {school.name.charAt(0)}
+                  </div>
+                  <div>
+                    <strong>{school.name}</strong>
+                    <span>{school.address || "Address not provided"}</span>
+                  </div>
+                </div>
+              </td>
+              <td><span className="code-text">{school.code}</span></td>
+              <td>
+                <div className="contact-cell">
+                  <strong>{school.contact_email}</strong>
+                  <span>{school.contact_phone || "—"}</span>
+                </div>
+              </td>
+              <td>
+                <span className={`status ${school.status}`}>
+                  {school.status}
+                </span>
+              </td>
+              {(onApprove || onReject) && (
+                <td>
+                  {school.status === "pending" ? (
+                    <div className="row-actions">
+                      {onApprove && (
+                        <button
+                          className="approve-button"
+                          disabled={busy}
+                          onClick={() => onApprove(school.id)}
+                        >
+                          <Check size={14} /> Approve
+                        </button>
+                      )}
+                      {onReject && (
+                        <button
+                          className="reject-button"
+                          disabled={busy}
+                          onClick={() => onReject(school.id)}
+                        >
+                          <X size={14} />
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="muted">—</span>
+                  )}
+                </td>
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {schools.length === 0 && (
+        <div className="empty-state">No schools match your search.</div>
+      )}
+    </div>
+  );
+}
+
+function Modal({
+  title,
+  children,
+  onClose,
+}: {
+  title: string;
+  children: React.ReactNode;
+  onClose: () => void;
+}) {
+  return (
+    <div className="modal-backdrop" onMouseDown={onClose}>
+      <div
+        className="modal-card"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="modal-heading">
+          <h2>{title}</h2>
+          <button className="icon-button" onClick={onClose} aria-label="Close">
+            <X size={19} />
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+export default App;
